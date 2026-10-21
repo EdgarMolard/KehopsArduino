@@ -3,30 +3,32 @@
 // Matériel :
 // - Joystick : X sur A0, Y sur A1, bouton sur D2
 // - HC-SR04 : TRIG sur D9, ECHO sur D10
+// - Capteur LDR : sur A2
 //
 // Trames envoyées à Godot :
 // - joystick_x:<0..1023>
 // - joystick_y:<0..1023>
 // - button:0|1
 // - ultrason:<distance_en_cm>
-//
-// Les sketches d'origine restent dans Joystick/ et capteur_interaction/
-// comme sauvegardes.
+// - luminosite:<0..1023>
 
 const int PIN_JOYSTICK_X = A0;
 const int PIN_JOYSTICK_Y = A1;
 const int PIN_JOYSTICK_BUTTON = 2;
 const int PIN_ULTRASON_TRIG = 9;
 const int PIN_ULTRASON_ECHO = 10;
+const int PIN_LDR = A2; // Ajout du capteur de lumière sur A2
 
 const unsigned long JOYSTICK_SEND_INTERVAL_MS = 20;
 const unsigned long ULTRASON_SEND_INTERVAL_MS = 500;
+const unsigned long LDR_SEND_INTERVAL_MS = 200; // Rafraîchissement 5 fois par seconde (comme le test initial)
 const unsigned long ULTRASON_TIMEOUT_US = 30000;
 
 bool paired = false;
 bool last_button_state = false;
 unsigned long last_joystick_send_ms = 0;
 unsigned long last_ultrason_send_ms = 0;
+unsigned long last_ldr_send_ms = 0; // Chrono pour la LDR
 
 String serial_command;
 
@@ -36,11 +38,12 @@ void setup() {
   pinMode(PIN_ULTRASON_TRIG, OUTPUT);
   pinMode(PIN_ULTRASON_ECHO, INPUT);
   pinMode(LED_BUILTIN, OUTPUT);
+  // Pas besoin de pinMode pour A2 (les broches Analogiques sont en entrée par défaut)
 
   digitalWrite(PIN_ULTRASON_TRIG, LOW);
   digitalWrite(LED_BUILTIN, LOW);
 
-  Serial.begin(115200);
+  Serial.begin(115200); // Gardé à 115200 comme dans le code Kehops (attention, vérifiez que Godot est configuré à cette même vitesse)
   Serial.setTimeout(10);
   serial_command.reserve(32);
 }
@@ -63,6 +66,11 @@ void loop() {
   if (now - last_ultrason_send_ms >= ULTRASON_SEND_INTERVAL_MS) {
     last_ultrason_send_ms = now;
     send_ultrason_distance();
+  }
+
+  if (now - last_ldr_send_ms >= LDR_SEND_INTERVAL_MS) {
+    last_ldr_send_ms = now;
+    send_ldr_state();
   }
 }
 
@@ -131,4 +139,10 @@ void send_ultrason_distance() {
 
   const unsigned int distance_cm = duration * 0.034 / 2;
   Serial.println("ultrason:" + String(distance_cm));
+}
+
+
+void send_ldr_state() {
+  const int valeur_ldr = analogRead(PIN_LDR);
+  Serial.println("luminosite:" + String(valeur_ldr));
 }
