@@ -18,6 +18,8 @@ const int PIN_JOYSTICK_BUTTON = 2;
 const int PIN_ULTRASON_TRIG = 9;
 const int PIN_ULTRASON_ECHO = 10;
 const int PIN_LDR = A2; // Ajout du capteur de lumière sur A2
+const int PIN_TREASURE_LEDS[] = {LED_BUILTIN, 5, 6};
+const int TREASURE_LED_COUNT = sizeof(PIN_TREASURE_LEDS) / sizeof(PIN_TREASURE_LEDS[0]);
 
 const unsigned long JOYSTICK_SEND_INTERVAL_MS = 20;
 const unsigned long ULTRASON_SEND_INTERVAL_MS = 500;
@@ -31,18 +33,20 @@ unsigned long last_ultrason_send_ms = 0;
 unsigned long last_ldr_send_ms = 0; // Chrono pour la LDR
 
 String serial_command;
+int next_treasure_led = 0;
 
 
 void setup() {
   pinMode(PIN_JOYSTICK_BUTTON, INPUT_PULLUP);
   pinMode(PIN_ULTRASON_TRIG, OUTPUT);
   pinMode(PIN_ULTRASON_ECHO, INPUT);
-  pinMode(LED_BUILTIN, OUTPUT);
+  for (int i = 0; i < TREASURE_LED_COUNT; i++) {
+    pinMode(PIN_TREASURE_LEDS[i], OUTPUT);
+    digitalWrite(PIN_TREASURE_LEDS[i], LOW);
+  }
   // Pas besoin de pinMode pour A2 (les broches Analogiques sont en entrée par défaut)
 
   digitalWrite(PIN_ULTRASON_TRIG, LOW);
-  digitalWrite(LED_BUILTIN, LOW);
-
   Serial.begin(115200); // Gardé à 115200 comme dans le code Kehops (attention, vérifiez que Godot est configuré à cette même vitesse)
   Serial.setTimeout(10);
   serial_command.reserve(32);
@@ -98,9 +102,19 @@ void handle_command(const String& command) {
   }
 
   if (command == "led:1") {
-    digitalWrite(LED_BUILTIN, HIGH);
+    if (next_treasure_led < TREASURE_LED_COUNT) {
+      digitalWrite(PIN_TREASURE_LEDS[next_treasure_led], HIGH);
+      Serial.println("ack:led" + String(next_treasure_led + 1) + ":1");
+      next_treasure_led++;
+    } else {
+      Serial.println("ack:led:ignored");
+    }
   } else if (command == "led:0") {
-    digitalWrite(LED_BUILTIN, LOW);
+    for (int i = 0; i < TREASURE_LED_COUNT; i++) {
+      digitalWrite(PIN_TREASURE_LEDS[i], LOW);
+    }
+    next_treasure_led = 0;
+    Serial.println("ack:led:0");
   }
 }
 
