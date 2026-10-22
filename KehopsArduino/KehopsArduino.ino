@@ -26,13 +26,17 @@ const unsigned long ULTRASON_SEND_INTERVAL_MS = 500;
 const unsigned long LDR_SEND_INTERVAL_MS = 200; // Rafraîchissement 5 fois par seconde (comme le test initial)
 const unsigned long ULTRASON_TIMEOUT_US = 30000;
 
+// Les mesures ne sont envoyées qu'après l'association avec Godot.
 bool paired = false;
+// Sert à n'envoyer un événement de bouton que lors d'un changement d'état.
 bool last_button_state = false;
 unsigned long last_joystick_send_ms = 0;
 unsigned long last_ultrason_send_ms = 0;
 unsigned long last_ldr_send_ms = 0; // Chrono pour la LDR
 
+// Accumule une commande reçue jusqu'au saut de ligne.
 String serial_command;
+// Indique la prochaine LED de trésor à allumer progressivement.
 int next_treasure_led = 0;
 
 
@@ -84,6 +88,7 @@ void read_serial_commands() {
     const char character = static_cast<char>(Serial.read());
 
     if (character == '\n') {
+      // Une ligne complète est nettoyée puis interprétée comme une commande.
       serial_command.trim();
       handle_command(serial_command);
       serial_command = "";
@@ -96,12 +101,14 @@ void read_serial_commands() {
 
 void handle_command(const String& command) {
   if (command == "DISCOVER") {
+    // L'accusé de réception autorise ensuite l'envoi des capteurs.
     Serial.println("GDSERIAL_ACK:kehops_unified");
     paired = true;
     return;
   }
 
   if (command == "led:1") {
+    // Chaque validation allume la LED suivante jusqu'à épuisement du tableau.
     if (next_treasure_led < TREASURE_LED_COUNT) {
       digitalWrite(PIN_TREASURE_LEDS[next_treasure_led], HIGH);
       Serial.println("ack:led" + String(next_treasure_led + 1) + ":1");
@@ -110,6 +117,7 @@ void handle_command(const String& command) {
       Serial.println("ack:led:ignored");
     }
   } else if (command == "led:0") {
+    // Cette commande remet toutes les LED et la progression à zéro.
     for (int i = 0; i < TREASURE_LED_COUNT; i++) {
       digitalWrite(PIN_TREASURE_LEDS[i], LOW);
     }
@@ -127,6 +135,7 @@ void send_joystick_state() {
   Serial.println("joystick_x:" + String(joystick_x));
   Serial.println("joystick_y:" + String(joystick_y));
 
+  // Le bouton est envoyé uniquement quand sa valeur change afin de limiter le trafic série.
   if (button_pressed != last_button_state) {
     last_button_state = button_pressed;
     Serial.println("button:" + String(button_pressed ? "1" : "0"));
@@ -135,6 +144,7 @@ void send_joystick_state() {
 
 
 void send_ultrason_distance() {
+  // Une impulsion courte déclenche la mesure; la durée de retour donne la distance.
   digitalWrite(PIN_ULTRASON_TRIG, LOW);
   delayMicroseconds(2);
   digitalWrite(PIN_ULTRASON_TRIG, HIGH);
@@ -148,6 +158,7 @@ void send_ultrason_distance() {
   );
 
   if (duration == 0) {
+    // Aucun écho dans le délai prévu: on ignore cette mesure invalide.
     return;
   }
 
@@ -157,6 +168,7 @@ void send_ultrason_distance() {
 
 
 void send_ldr_state() {
+  // La valeur brute de la LDR est convertie en trame comprise par Godot.
   const int valeur_ldr = analogRead(PIN_LDR);
   Serial.println("luminosite:" + String(valeur_ldr));
 }
