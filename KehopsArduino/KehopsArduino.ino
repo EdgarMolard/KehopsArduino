@@ -18,7 +18,7 @@ const int PIN_JOYSTICK_BUTTON = 2;
 const int PIN_ULTRASON_TRIG = 9;
 const int PIN_ULTRASON_ECHO = 10;
 const int PIN_LDR = A2; // Ajout du capteur de lumière sur A2
-const int PIN_TREASURE_LEDS[] = {LED_BUILTIN, 5, 6};
+const int PIN_TREASURE_LEDS[] = {A3, A4, A5};
 const int TREASURE_LED_COUNT = sizeof(PIN_TREASURE_LEDS) / sizeof(PIN_TREASURE_LEDS[0]);
 
 const unsigned long JOYSTICK_SEND_INTERVAL_MS = 20;
